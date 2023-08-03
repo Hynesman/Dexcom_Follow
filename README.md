@@ -9,4 +9,4 @@ I will when possible push updates as they come and work on improving the Dexcom 
 
 let me know if you've put it to good use or you have spotted a flaw.
 
-![Alt text](dexcom_follow_esp32-jpg)
+![Alt text](dexcom_follow_esp32.jpg)
