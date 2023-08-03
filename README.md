@@ -8,3 +8,5 @@ I've included a simple example sketch to get you started.  I hope Someone somewh
 I will when possible push updates as they come and work on improving the Dexcom follower class i've made here.
 
 let me know if you've put it to good use or you have spotted a flaw.
+
+![Alt text](dexcom_follow_esp32-jpg)
