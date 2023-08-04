@@ -10,8 +10,8 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-const char *ssid = "Hynes57";
-const char *password = "Donaldduck";
+const char *ssid = "your ssid";
+const char *password = "your password";
 
 void setup()
 {
