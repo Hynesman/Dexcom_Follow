@@ -43,7 +43,7 @@ void setup()
   }
 
   Serial.println("Connected to WiFi!");
-  Follower follower(true, "birkwitt", "Donaldduck57");
+  Follower follower(true, "username", "password"); // to dexcom
   follower.getNewSessionID();
   follower.GlucoseLevelsNow();
   display.println(follower.GlucoseNow.mmol_l);
