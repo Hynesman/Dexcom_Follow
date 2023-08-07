@@ -4,8 +4,11 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-const char *DEXCOM_BASE_URL = "https://shareous1.dexcom.com/ShareWebServices/Services";
+// Dexcom base API urls
+const char *DEXCOM_BASE_URL = "https://share2.dexcom.com/ShareWebServices/Services";
 const char *DEXCOM_BASE_URL_OUS = "https://shareous1.dexcom.com/ShareWebServices/Services";
+
+const char *DEFAULT_SESSION_ID = "00000000-0000-0000-0000-000000000000";
 
 // Trend directions mapping
 const char *DEXCOM_TREND_DIRECTIONS[] = {
@@ -35,7 +38,11 @@ const char *DEXCOM_TREND_ARROWS[] = {
     "-"};
 
 String applicationId = "d8665ade-9673-4e27-9ff6-92db4ce13d13";
+const char *DEXCOM_APPLICATION_ID = "d89443d2-327c-4a6f-89e5-496bbb0317db"; // alternative
 
+/*
+    dsfefsef
+*/
 Follower::Follower(bool ous, String user, String pass, String sessionID)
 {
     Username = user;
@@ -74,9 +81,10 @@ void Follower::Set_sessionID(String sessionID)
     SessionID = sessionID;
 };
 
-String Follower::getNewSessionID()
+bool Follower::getNewSessionID()
 {
     String response;
+    bool ok = false;
     if (WiFi.status() == WL_CONNECTED)
     {
         HTTPClient http;
@@ -98,73 +106,90 @@ String Follower::getNewSessionID()
                 Serial.println("HTTP POST was successful!");
                 Serial.println("Response:");
                 Serial.println(response);
+                SessionID = response;
+                ok = true;
             }
             else
             {
                 Serial.print("HTTP error code: ");
                 Serial.println(httpCode);
                 response = "error";
+                SessionID = "00000000-0000-0000-0000-000000000000";
+                ok = false;
             }
         }
         else
         {
             Serial.println("HTTP connection failed!");
             response = "no connection";
+            ok = false;
         }
 
         http.end();
     }
-    SessionID = response;
-    return response;
+    return ok;
 };
 
-void Follower::GlucoseLevelsNow()
+bool Follower::GlucoseLevelsNow()
 {
-    HTTPClient http;
-
-    String url = DexcomServer + "/Publisher/ReadPublisherLatestGlucoseValues?sessionId=";
-    url += SessionID;
-    url += "&minutes=1440&maxCount=1";
-
-    http.begin(url);
-
-    int httpResponseCode = http.GET();
-    if (httpResponseCode == HTTP_CODE_OK)
+    bool result = false;
+    if (WiFi.status() == WL_CONNECTED)
     {
-        String response = http.getString();
+        HTTPClient http;
 
-        // Parse the JSON response
-        StaticJsonDocument<2000> doc;
-        DeserializationError error = deserializeJson(doc, response);
-        if (error)
+        String url = DexcomServer + "/Publisher/ReadPublisherLatestGlucoseValues?sessionId=";
+        url += SessionID;
+        url += "&minutes=1440&maxCount=1";
+
+        http.begin(url);
+
+        int httpResponseCode = http.GET();
+        if (httpResponseCode == HTTP_CODE_OK)
         {
-            Serial.print("Error parsing JSON response: ");
-            Serial.println(error.c_str());
-            return;
+            String response = http.getString();
+
+            // Parse the JSON response
+            StaticJsonDocument<200> doc;
+            DeserializationError error = deserializeJson(doc, response);
+            if (error)
+            {
+                Serial.print("Error parsing JSON response: ");
+                Serial.println(error.c_str());
+                http.end();
+                return false;
+            }
+
+            // Extract the blood glucose value
+            GlucoseNow.mg_dl = doc[0]["Value"];
+            GlucoseNow.mmol_l = convertToMmol(GlucoseNow.mg_dl);
+            Serial.print("Blood Glucose Level: ");
+            Serial.println(GlucoseNow.mmol_l);
+
+            GlucoseNow.trend_description = doc[0]["Trend"].as<const char *>();
+            GlucoseNow.trend_Symbol = getTrendSymbol(GlucoseNow.trend_description);
+            Serial.print("current trend: ");
+            Serial.println(GlucoseNow.trend_Symbol);
+
+            GlucoseNow.timestamp = convertToUnixTimestamp(doc[0]["DT"].as<const char *>());
+            Serial.println(GlucoseNow.timestamp);
+
+            result = true;
+        }
+        else
+        {
+            Serial.print("HTTP GET request failed, error code: ");
+            Serial.println(httpResponseCode);
+            getNewSessionID();
+
+            result = false;
         }
 
-        // Extract the blood glucose value
-        GlucoseNow.mg_dl = doc[0]["Value"];
-        GlucoseNow.mmol_l = convertToMmol(GlucoseNow.mg_dl);
-        Serial.print("Blood Glucose Level: ");
-        Serial.println(GlucoseNow.mmol_l);
-
-        GlucoseNow.trend_description = doc[0]["Trend"].as<const char *>();
-        GlucoseNow.trend_Symbol = getTrendSymbol(GlucoseNow.trend_description);
-        Serial.print("current trend: ");
-        Serial.println(GlucoseNow.trend_Symbol);
-
-        GlucoseNow.timestamp = convertToUnixTimestamp(doc[0]["DT"].as<const char *>());
-        Serial.println(GlucoseNow.timestamp);
+        http.end();
     }
-    else
-    {
-        Serial.print("HTTP GET request failed, error code: ");
-        Serial.println(httpResponseCode);
-        getNewSessionID();
+    else{
+        result = false;
     }
-
-    http.end();
+    return result;
 };
 
 double Follower::convertToMmol(int mgdl)
@@ -191,7 +216,7 @@ unsigned long Follower::convertToUnixTimestamp(const char *dtValue)
     const char *numericalPart = dtValue + 5; // Skip "Date("
 
     // Find the position of the first 10 digits
-    const char *offset =  numericalPart + 10;
+    const char *offset = numericalPart + 10;
 
     if (offset)
     {
@@ -204,11 +229,10 @@ unsigned long Follower::convertToUnixTimestamp(const char *dtValue)
 
         // Get the time zone offset in hours and minutes
         int tzHours, tzMinutes;
-        sscanf(offset+3, "+%2d%2d", &tzHours, &tzMinutes);
-        
+        sscanf(offset + 3, "+%2d%2d", &tzHours, &tzMinutes);
 
         // Convert the offset to seconds and adjust the timestamp
-        unsigned long offsetSeconds = tzHours * 60*60  + tzMinutes * 60;
+        unsigned long offsetSeconds = tzHours * 60 * 60 + tzMinutes * 60;
         timestamp += offsetSeconds;
 
         return timestamp; // Convert microseconds to seconds

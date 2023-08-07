@@ -1,6 +1,6 @@
 /*
   Dexcom_follow.h - Library for following blood glucous levels of a dexcom sensor remotely.
-  Created by Michael J. Hynes 1st September 2023.
+  Created by Michael J. Hynes 1st August 2023.
   Released into the public domain.
 */
 #ifndef Dexcom_follow
@@ -34,8 +34,8 @@ public:
     Follower(bool ous=true, String user = "", String pass = "", String sessionID = "");
     void Set_user_pass(String user, String pass);
     void Set_sessionID(String sessionID);
-    String getNewSessionID();
-    void GlucoseLevelsNow();
+    bool getNewSessionID();
+    bool GlucoseLevelsNow();
     GlucoseReading GlucoseNow;
 
 private:
