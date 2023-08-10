@@ -1,3 +1,5 @@
+# I am not a medical professional and this code should not be used to make medical decisions. Use at your own risk and remember to always use approved methods to check your blood sugar.  
+
 # Dexcom_Follow
 a library to connect to Dexcom Follow from a Esp32.  Derived from the python pyDexcom library.  
 
