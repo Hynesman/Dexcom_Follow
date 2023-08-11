@@ -37,6 +37,7 @@ public:
     bool getNewSessionID();
     bool GlucoseLevelsNow();
     GlucoseReading GlucoseNow;
+    bool SessionIDnotDefault();
 
 private:
     String DexcomServer;

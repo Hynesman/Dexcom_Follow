@@ -130,6 +130,18 @@ bool Follower::getNewSessionID()
     return ok;
 };
 
+bool Follower::SessionIDnotDefault(){
+    if (SessionID == "00000000-0000-0000-0000-000000000000"){
+        return false;
+    }
+    else if (SessionID == ""){
+        return false;
+    }
+    else{
+        return true;
+    }
+}
+
 bool Follower::GlucoseLevelsNow()
 {
     bool result = false;
